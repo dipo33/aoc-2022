@@ -1,0 +1,49 @@
+cabal-version:       2.4
+
+name:                x2022
+version:             0.1.0.0
+build-type:          Simple
+
+common common-all
+  build-depends:
+      base >=4.16.3 && <4.16.4,
+      parsec >=3.1.15.0,
+      extra >=1.7.12,
+      utility-ht >=0.0.16,
+      split >=0.2.3.5,
+      ilist >=0.4.0.1,
+      containers >=0.6.6
+  default-language:    Haskell2010
+  ghc-options:         -Wall
+  hs-source-dirs:      src, ., libs
+  other-modules:       Utils, AdventParser
+
+executable day01
+  import:              common-all
+  main-is:             Day01.hs
+  -- other-extensions:
+
+executable day02
+  import:              common-all
+  main-is:             Day02.hs
+
+executable day03
+  import:              common-all
+  main-is:             Day03.hs
+
+executable day04
+  import:              common-all
+  main-is:             Day04.hs
+
+executable day05
+  import:              common-all
+  main-is:             Day05.hs
+
+executable day06
+  import:              common-all
+  main-is:             Day06.hs
+
+
+executable day07
+  import:              common-all
+  main-is:             Day07.hs
