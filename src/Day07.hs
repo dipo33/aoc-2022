@@ -2,7 +2,6 @@ module Main where
 
 import AdventParser (integer)
 import Control.Applicative (liftA2)
-import Data.Bool.HT (if')
 import Data.List (partition)
 import Text.Parsec (anyChar, char, many, many1, manyTill, newline, string, (<|>))
 import Text.Parsec.String (Parser)
@@ -18,9 +17,9 @@ main :: IO ()
 main = do
   commands <- Utils.parseFile output "day07"
   let node = processCommands commands [] (Dir "/" [])
-  Utils.firstResult . (`getDirSizes` 100000) $ node
+  Utils.firstResult . sum . filter (<= 100000) . getDirectorySizes $ node
   let requiredSpace = getSize node - 40000000
-  Utils.secondResult . minimum . filter (>= requiredSpace) . getAllSizes $ node
+  Utils.secondResult . minimum . filter (>= requiredSpace) . getDirectorySizes $ node
 
 processCommands :: [Command] -> [String] -> FileNode -> FileNode
 processCommands [] _ node = node
@@ -43,16 +42,9 @@ getSize :: FileNode -> Int
 getSize (File _ x) = x
 getSize (Dir _ xs) = sum . map getSize $ xs
 
-getDirSizes :: FileNode -> Int -> Int
-getDirSizes (File _ _) _ = 0
-getDirSizes dir@(Dir _ xs) s =
-  let size = getSize dir
-      nestedSize = sum . map (`getDirSizes` s) $ xs
-   in if' (size <= s) (size + nestedSize) nestedSize
-
-getAllSizes :: FileNode -> [Int]
-getAllSizes (File _ _) = []
-getAllSizes dir@(Dir _ xs) = getSize dir : concatMap getAllSizes xs
+getDirectorySizes :: FileNode -> [Int]
+getDirectorySizes (File _ _) = []
+getDirectorySizes dir@(Dir _ xs) = getSize dir : concatMap getDirectorySizes xs
 
 getName :: FileNode -> String
 getName (File name _) = name
