@@ -2,7 +2,8 @@ module Main where
 
 import AdventParser (signedInteger)
 import Control.Applicative ((<|>))
-import Data.Tuple.HT (thd3)
+import Data.Bool.HT (if')
+import Data.List.Extra (chunksOf)
 import Text.Parsec (endBy1, spaces, string)
 import Text.Parsec.String (Parser)
 import qualified Utils
@@ -10,11 +11,13 @@ import qualified Utils
 data Instruction = NOOP | ADDX Int
   deriving (Eq, Show)
 
---   Context = (State, LastExecutedCycle, Tracker)
-type Context = (State, Int, Tracker)
+--   Context a = Context State, LastExecutedCycle, AdditionalData
+data Context a = Context State Int a
 
 --   Tracker = TotalSignalStrength
 type Tracker = Int
+
+type Screen = String
 
 --   State = RegisterX
 type State = Int
@@ -22,21 +25,31 @@ type State = Int
 main :: IO ()
 main = do
   instructions' <- Utils.parseFile instructions "day10"
-  Utils.firstResult . thd3 . foldl execute (1, 1, 0) $ instructions'
+  Utils.firstResult . getContextData . foldl (execute track) (Context 1 1 0) $ instructions'
+  mapM_ Utils.secondResult . chunksOf 40 . reverse . getContextData . foldl (execute screen) (Context 1 1 "") $ instructions'
 
-execute :: Context -> Instruction -> Context
-execute context NOOP = updateState id . track 1 $ context
-execute context (ADDX x) = updateState (+ x) . track 2 $ context
+execute :: (Int -> Context a -> Context a) -> Context a -> Instruction -> Context a
+execute f context NOOP = updateState id . f 1 $ context
+execute f context (ADDX x) = updateState (+ x) . f 2 $ context
 
-updateState :: (State -> State) -> Context -> Context
-updateState f (state, cycles, tracker) = (f state, cycles, tracker)
+updateState :: (State -> State) -> Context a -> Context a
+updateState f (Context state cycles x) = Context (f state) cycles x
 
-track :: Int -> Context -> Context
-track cycles (s, c, t) =
+getContextData :: Context a -> a
+getContextData (Context _ _ x) = x
+
+track :: Int -> Context Tracker -> Context Tracker
+track cycles (Context s c t) =
   let during = [c + x | x <- [0 .. cycles - 1]]
       duringOnly = filter ((== 0) . (`mod` 40) . (`subtract` 20)) during
       signals = map (* s) duringOnly
-   in (s, c + cycles, t + sum signals)
+   in Context s (c + cycles) (t + sum signals)
+
+screen :: Int -> Context Screen -> Context Screen
+screen 1 (Context state c scr) =
+  let isSprite = abs ((c `mod` 40) - 1 - state) <= 1
+   in Context state (c + 1) (if' isSprite '#' ' ' : scr)
+screen cycles context = screen (cycles - 1) (screen 1 context)
 
 -- Parsers --
 instruction :: Parser Instruction
