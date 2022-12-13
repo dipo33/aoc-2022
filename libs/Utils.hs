@@ -11,6 +11,10 @@ import Text.Parsec.String (Parser)
 applyWhen :: (a -> Bool) -> (a -> a) -> a -> a
 applyWhen when fun a = if' (when a) (fun a) a
 
+applyFunctions2 :: [a -> b -> c] -> a -> b -> [c]
+applyFunctions2 [] _ _ = []
+applyFunctions2 (f : fs) a b = f a b : applyFunctions2 fs a b
+
 mapWhen :: (a -> Bool) -> (a -> a) -> [a] -> [a]
 mapWhen when fun = map $ applyWhen when fun
 
@@ -38,6 +42,7 @@ firstResult = putStrLn . ("First Part: " ++) . show
 secondResult :: Show a => a -> IO ()
 secondResult = putStrLn . ("Second Part: " ++) . show
 
+-- TODO: get rid of
 mapUpdateLookup :: Ord k => (a -> a) -> k -> Map k a -> (a, Map k a)
 mapUpdateLookup fun key oldMap =
   let (val, newMap) = Map.updateLookupWithKey (\_ -> Just . fun) key oldMap

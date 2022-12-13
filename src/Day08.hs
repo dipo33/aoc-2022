@@ -1,45 +1,61 @@
 module Main where
 
+import Data.Bool.HT (if')
 import Data.Char (digitToInt)
-import Data.List (transpose)
-import Data.Map (Map)
-import qualified Data.Map as Map
+import Data.List (nub)
+import Data.Matrix (Matrix)
+import qualified Data.Matrix as Matrix
+import Data.Set (Set)
+import Data.Vector (Vector)
+import qualified Data.Vector as Vector
 import Text.Parsec (digit, endBy1, many1, spaces)
 import Text.Parsec.String (Parser)
 import qualified Utils
 
-type Tree = (Int, (Int, Int))
+type TreeGrid = Matrix Int
 
-type Visibility = Map (Int, Int) Bool
+type TreePos = (Int, Int)
+
+type VisibleTrees = Set TreePos
 
 main :: IO ()
 main = do
-  rows <- Utils.parseFile grid "day08"
-  Utils.firstResult . length . filter id . Map.elems . checkVisibility . createTreeGrid $ rows
+  trees <- Utils.parseFile grid "day08"
+  Utils.firstResult . length . visible $ trees
+  Utils.secondResult . maximum . Matrix.mapPos (scenic trees) $ trees
 
-checkVisibility :: [[Tree]] -> Visibility
-checkVisibility rows =
-  let columns = transpose rows
-      visible = generateVisibilityMap (length columns) (length rows)
-   in visibilityFold (map reverse columns) . visibilityFold (map reverse rows) . visibilityFold columns . visibilityFold rows $ visible
+directions :: TreeGrid -> [[(TreePos, Int)]]
+directions trees =
+  let trees' = Matrix.mapPos (,) trees
+      rows = Matrix.toLists trees'
+      cols = Matrix.toLists . Matrix.transpose $ trees'
+   in concat [rows, cols, map reverse rows, map reverse cols]
 
-visibilityFold :: [[Tree]] -> Visibility -> Visibility
-visibilityFold [] v = v
-visibilityFold (x : xs) v =
-  let (v', _) = foldr visibilityFun (v, -1) x
-   in visibilityFold xs v'
+visible :: TreeGrid -> [TreePos]
+visible trees =
+  let dirs = directions trees
+   in nub . concatMap (fst . foldr visFold ([], -1)) $ dirs
+  where
+    visFold :: (TreePos, Int) -> ([TreePos], Int) -> ([TreePos], Int)
+    visFold (pos, x) (vis, max') = if' (x > max') (pos : vis, x) (vis, max')
 
-visibilityFun :: Tree -> (Visibility, Int) -> (Visibility, Int)
-visibilityFun (tree, pos) (vis, maxTree)
-  | tree > maxTree = (Map.insert pos True vis, tree)
-  | otherwise = (vis, maxTree)
+directionsFrom :: TreePos -> TreeGrid -> [Vector Int]
+directionsFrom (y, x) trees =
+  let right = Vector.drop x . Matrix.getRow y $ trees
+      down = Vector.drop y . Matrix.getCol x $ trees
+      left = Vector.reverse . Vector.take (x - 1) . Matrix.getRow y $ trees
+      up = Vector.reverse . Vector.take (y - 1) . Matrix.getCol x $ trees
+   in [right, down, left, up]
 
-createTreeGrid :: [[Int]] -> [[Tree]]
-createTreeGrid xs = [[(v, (x, y)) | (x, v) <- zip [0 ..] row] | (y, row) <- zip [0 ..] xs]
-
-generateVisibilityMap :: Int -> Int -> Visibility
-generateVisibilityMap x y = Map.fromList [((i, j), False) | i <- [0 .. x - 1], j <- [0 .. y - 1]]
+scenic :: TreeGrid -> TreePos -> Int -> Int
+scenic trees pos val = product . map directionScore . directionsFrom pos $ trees
+  where
+    directionScore :: Vector Int -> Int
+    directionScore vec
+      | Vector.null vec = 0
+      | Vector.head vec < val = (+ 1) . directionScore . Vector.tail $ vec
+      | otherwise = 1
 
 -- Parsers --
-grid :: Parser [[Int]]
-grid = endBy1 (many1 $ digitToInt <$> digit) spaces
+grid :: Parser TreeGrid
+grid = Matrix.fromLists <$> endBy1 (many1 $ digitToInt <$> digit) spaces
