@@ -46,12 +46,6 @@ secondResult :: Show a => a -> IO ()
 secondResult = putStrLn . ("Second Part: " ++) . show
 
 -- Containers --
--- TODO: get rid of
-mapUpdateLookup :: Ord k => (a -> a) -> k -> Map k a -> (a, Map k a)
-mapUpdateLookup fun key oldMap =
-  let (val, newMap) = Map.updateLookupWithKey (\_ -> Just . fun) key oldMap
-   in (fromJust val, newMap)
-
 directMatrixNeighbors :: Matrix a -> (Int, Int) -> [a]
 directMatrixNeighbors m (x, y) =
   let rows = Matrix.nrows m
