@@ -1,9 +1,12 @@
 module Utils where
 
+import Control.Monad (guard)
 import Data.Bool.HT (if')
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Maybe (fromJust)
+import Data.Matrix (Matrix)
+import qualified Data.Matrix as Matrix
+import Data.Maybe (fromJust, isJust)
 import System.Environment (getArgs)
 import Text.Parsec (parse)
 import Text.Parsec.String (Parser)
@@ -42,8 +45,42 @@ firstResult = putStrLn . ("First Part: " ++) . show
 secondResult :: Show a => a -> IO ()
 secondResult = putStrLn . ("Second Part: " ++) . show
 
+-- Containers --
 -- TODO: get rid of
 mapUpdateLookup :: Ord k => (a -> a) -> k -> Map k a -> (a, Map k a)
 mapUpdateLookup fun key oldMap =
   let (val, newMap) = Map.updateLookupWithKey (\_ -> Just . fun) key oldMap
    in (fromJust val, newMap)
+
+directMatrixNeighbors :: Matrix a -> (Int, Int) -> [a]
+directMatrixNeighbors m (x, y) =
+  let rows = Matrix.nrows m
+      cols = Matrix.ncols m
+   in do
+        (i, j) <- [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+        guard $ and [i > 0, i <= cols, j > 0, j <= rows]
+        return $ m Matrix.! (j, i)
+
+-- Algorhitms --
+bfsHelper :: (Eq a, Ord a) => a -> Maybe a -> Map a [a] -> Map a a
+bfsHelper start end graph =
+  let predecessors = bfsHelper' [start] $ Map.singleton start Nothing
+   in fromJust <$> Map.filter isJust predecessors
+  where
+    bfsHelper' [] predecessors = predecessors
+    bfsHelper' (x : xs) predecessors
+      | Just x == end = predecessors
+      | otherwise =
+          let neighbours = filter (`Map.notMember` predecessors) $ graph Map.! x
+           in bfsHelper' (xs ++ neighbours) (foldr (`Map.insert` Just x) predecessors neighbours)
+
+bfs :: (Eq a, Ord a) => a -> a -> Map a [a] -> Map a a
+bfs start end = bfsHelper start (Just end)
+
+bfsAll :: (Eq a, Ord a) => a -> Map a [a] -> Map a a
+bfsAll start = bfsHelper start Nothing
+
+bfsGetPath :: (Ord a) => a -> Map a a -> [a]
+bfsGetPath target predecessors = reverse . getPath $ target
+  where
+    getPath from = from : maybe [] getPath (Map.lookup from predecessors)
