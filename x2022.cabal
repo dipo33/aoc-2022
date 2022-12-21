@@ -70,3 +70,7 @@ executable day11
 executable day12
   import:              common-all
   main-is:             Day12.hs
+
+executable day13
+  import:              common-all
+  main-is:             Day13.hs
